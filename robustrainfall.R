@@ -7,15 +7,15 @@
 # Inputs for these functions are data and a value of the tuning parameter. 
 # They return the MDPDE estimates of the model parameters for exponential, gamma, lognormal and Weibull distributions respectively.
 
-# cvmdist.mdpde.exp, cvmdist.mdpde.gamma, cvmdist.mdpde.lnorm, cvmdist.mdpde.weibull
+# WD.mdpde.exp, WD.mdpde.gamma, WD.mdpde.lnorm, WD.mdpde.weibull
 
 # Inputs for these functions are data and a value of the tuning parameter. 
-# They return the corresponding CVM distances for exponential, gamma, lognormal and Weibull distributions respectively.
+# They return the corresponding Wasserstein distances (WDs) for exponential, gamma, lognormal and Weibull distributions respectively.
 
 # optim.alpha.exp, optim.alpha.gamma, optim.alpha.lnorm, optim.alpha.weibull
 
 # Inputs for these functions are data only. 
-# They return the optimal values of tuning parameter $\alpha$ by minimizing CVM distances for 
+# They return the optimal values of tuning parameter $\alpha$ by minimizing WDs for 
 # exponential, gamma, lognormal and Weibull distributions respectively.
 
 # sd.mdpde.exp, sd.mdpde.gamma, sd.mdpde.lnorm, sd.mdpde.weibull
@@ -126,72 +126,79 @@ mdpde.weibull <- function(X, alpha){
 
 #--------------------
 
-cmvdist.mdpde.exp <- function(X, alpha){
-  X <- X[is.na(X) == 0]
-  X <- X[X > 0]
-  X <- sort(X)
-  n <- length(X)
-  
-  mdpde.ests <- sapply(1:n, function(i){mdpde.exp(X[-i], alpha = alpha)})
-  mean(((seq_len(n) - 0.5) / n - 
-          sapply(1:n, function(i){pexp(X[i], rate = mdpde.ests[i])}))^2)}
+WD.mdpde.exp <- function(X, alpha){
+    X <- X[is.na(X) == 0]
+    X <- X[X > 0]
+    X <- sort(X)
+    n <- length(X)
+    
+    mdpde.ests <- sapply(1:n, function(i){mdpde.exp(X[-i], alpha = alpha)})
+    cdf.emp <- (seq_len(n) - 0.5) / n
+    cdf.th <- sapply(1:n, function(i){pexp(X[i], rate = mdpde.ests[i])})
+    mean(abs(cdf.emp - cdf.th))}
 
 #--------------------
 
-cmvdist.mdpde.gamma <- function(X, alpha){
+WD.mdpde.gamma <- function(X, alpha){
   X <- X[is.na(X) == 0]
   X <- X[X > 0]
   X <- sort(X)
   n <- length(X)
   
   mdpde.ests <- t(sapply(1:n, function(i){mdpde.gamma(X[-i], alpha = alpha)}))
-  mean(((seq_len(n) - 0.5) / n - sapply(1:n, function(i){
-    pgamma(X[i], shape = mdpde.ests[i, 1], rate = mdpde.ests[i, 2])}))^2)}
+  cdf.emp <- (seq_len(n) - 0.5) / n
+  cdf.th <- sapply(1:n, function(i){
+    pgamma(X[i], shape = mdpde.ests[i, 1], rate = mdpde.ests[i, 2])})
+  mean(abs(cdf.emp - cdf.th))}
 
 #--------------------
 
-cmvdist.mdpde.lnorm <- function(X, alpha){
+WD.mdpde.lnorm <- function(X, alpha){
   X <- X[is.na(X) == 0]
   X <- X[X > 0]
   X <- sort(X)
   n <- length(X)
   
   mdpde.ests <- t(sapply(1:n, function(i){mdpde.lnorm(X[-i], alpha = alpha)}))
-  mean(((seq_len(n) - 0.5) / n - sapply(1:n, function(i){
-    plnorm(X[i], meanlog = mdpde.ests[i, 1], sdlog = mdpde.ests[i, 2])}))^2)}
+  cdf.emp <- (seq_len(n) - 0.5) / n
+  cdf.th <- sapply(1:n, function(i){
+    plnorm(X[i], meanlog = mdpde.ests[i, 1], sdlog = mdpde.ests[i, 2])})
+  mean(abs(cdf.emp - cdf.th))}
 
 #--------------------
 
-cmvdist.mdpde.weibull <- function(X, alpha){
+WD.mdpde.weibull <- function(X, alpha){
   X <- X[is.na(X) == 0]
   X <- X[X > 0]
   X <- sort(X)
   n <- length(X)
   
   mdpde.ests <- t(sapply(1:n, function(i){mdpde.weibull(X[-i], alpha = alpha)}))
-  mean(((seq_len(n) - 0.5) / n - sapply(1:n, function(i){
-    pweibull(X[i], shape = mdpde.ests[i, 1], scale = 1 / mdpde.ests[i, 2])}))^2)}
+  cdf.emp <- (seq_len(n) - 0.5) / n
+  cdf.th <- sapply(1:n, function(i){
+    pweibull(X[i], shape = mdpde.ests[i, 1], scale = 1 / mdpde.ests[i, 2])})
+  mean(abs(cdf.emp - cdf.th))}
 
 #--------------------
 
 optim.alpha.exp <- function(X){
-  out <- optimize(function(alpha){cmvdist.mdpde.exp(X, alpha)}, lower = 0, upper = 1)
-  out <- list(optim.alpha = out$minimum, min.cvm.dist = out$objective)
-  out}
+    out <- optimize(function(alpha){WD.mdpde.exp(X, alpha)}, lower = 0, upper = 1)
+    out <- list(optim.alpha = out$minimum, min.WD = out$objective)
+    out}
 
 optim.alpha.gamma <- function(X){
-  out <- optimize(function(alpha){cmvdist.mdpde.gamma(X, alpha)}, lower = 0, upper = 1)
-  out <- list(optim.alpha = out$minimum, min.cvm.dist = out$objective)
+  out <- optimize(function(alpha){WD.mdpde.gamma(X, alpha)}, lower = 0, upper = 1)
+  out <- list(optim.alpha = out$minimum, min.WD = out$objective)
   out}
 
 optim.alpha.lnorm <- function(X){
-  out <- optimize(function(alpha){cmvdist.mdpde.lnorm(X, alpha)}, lower = 0, upper = 1)
-  out <- list(optim.alpha = out$minimum, min.cvm.dist = out$objective)
+  out <- optimize(function(alpha){WD.mdpde.lnorm(X, alpha)}, lower = 0, upper = 1)
+  out <- list(optim.alpha = out$minimum, min.WD = out$objective)
   out}
 
 optim.alpha.weibull <- function(X){
-  out <- optimize(function(alpha){cmvdist.mdpde.weibull(X, alpha)}, lower = 0, upper = 1)
-  out <- list(optim.alpha = out$minimum, min.cvm.dist = out$objective)
+  out <- optimize(function(alpha){WD.mdpde.weibull(X, alpha)}, lower = 0, upper = 1)
+  out <- list(optim.alpha = out$minimum, min.WD = out$objective)
   out}
 
 #--------------------
